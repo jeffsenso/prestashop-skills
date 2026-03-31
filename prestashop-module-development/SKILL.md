@@ -75,11 +75,21 @@ mymodule/
 ### 1) Modern module class structure
 
 **Main module file (`mymodule.php`)**:
+
+> **Rule**: Never put `Configuration::updateValue/deleteByName`, hook registration, or DB queries directly in `install()`/`uninstall()`. Delegate entirely to an `Installer` class from `src/Install/`.
+
+> **Critical**: Always `require_once __DIR__ . '/vendor/autoload.php';` after the `_PS_VERSION_` guard in the main module file. Without it, the module's own namespaced classes (`Installer`, form types, controllers…) will not be found when PrestaShop loads the module (e.g. `php bin/console pr:mo install …` will throw _"Attempted to load class … Did you forget a use statement?"_).
+
 ```php
 <?php
 if (!defined('_PS_VERSION_')) {
     exit;
 }
+
+require_once __DIR__ . '/vendor/autoload.php';
+
+use Vendor\MyModule\Install\Installer;
+use PrestaShop\PrestaShop\Adapter\SymfonyContainer;
 
 class MyModule extends Module
 {
@@ -90,7 +100,7 @@ class MyModule extends Module
         $this->version = '1.0.0';
         $this->author = 'Your Name';
         $this->need_instance = 0;
-        $this->ps_versions_compliancy = ['min' => '8.0', 'max' => _PS_VERSION_];
+        $this->ps_versions_compliancy = ['min' => '1.7.8.0', 'max' => _PS_VERSION_];
         $this->bootstrap = true;
 
         parent::__construct();
@@ -99,19 +109,152 @@ class MyModule extends Module
         $this->description = $this->trans('Module description', [], 'Modules.Mymodule.Admin');
     }
 
-    public function install()
+    public function install(): bool
     {
-        return parent::install()
-            && $this->installDatabase()
-            && $this->registerHook('displayHeader')
-            && Configuration::updateValue('MYMODULE_SETTING', 'default_value');
+        if (!parent::install()) {
+            return false;
+        }
+        $installer = new Installer();
+        return $installer->install($this);
     }
 
-    public function uninstall()
+    public function uninstall(): bool
     {
-        return parent::uninstall()
-            && $this->uninstallDatabase()
-            && Configuration::deleteByName('MYMODULE_SETTING');
+        $installer = new Installer();
+        return $installer->uninstall() && parent::uninstall();
+    }
+
+    // For Symfony-routed configuration tab:
+    public function getTabs(): array
+    {
+        return [[
+            'class_name' => 'AdminMymoduleConfiguration',
+            'visible' => false,
+            'name' => 'My Module Configuration',
+            'parent_class_name' => 'CONFIGURE',
+            'route_name' => 'mymodule_configuration',
+        ]];
+    }
+
+    public function getContent(): void
+    {
+        $router = SymfonyContainer::getInstance()->get('router');
+        Tools::redirectAdmin($router->generate('mymodule_configuration'));
+    }
+}
+```
+
+### 1a) Installer pattern (`src/Install/`)
+
+**Always split install logic into dedicated classes** in `src/Install/`:
+
+```
+src/Install/
+├── Installer.php              # orchestrates install/uninstall
+├── ConfigurationInstaller.php # handles Configuration table values
+├── FixturesInstaller.php      # (optional) inserts default/sample data
+└── index.php                  # PS security guard
+```
+
+**`src/Install/Installer.php`** — orchestrator:
+```php
+namespace Vendor\MyModule\Install;
+
+class Installer
+{
+    private array $hooks = ['displayHeader', 'displayFooter'];
+
+    private ConfigurationInstaller $configurationInstaller;
+    // private FixturesInstaller $fixturesInstaller; // only if default data needed
+
+    public function __construct()
+    {
+        $this->configurationInstaller = new ConfigurationInstaller();
+        // $this->fixturesInstaller = new FixturesInstaller();
+    }
+
+    public function install(\Module $module): bool
+    {
+        if (!$this->registerHooks($module)) {
+            return false;
+        }
+        // if (!$this->installDatabase()) { return false; } // only if DB tables needed
+        if (!$this->configurationInstaller->install()) {
+            return false;
+        }
+        // $this->fixturesInstaller->install(); // only if default data needed
+        return true;
+    }
+
+    public function uninstall(): bool
+    {
+        // $this->uninstallDatabase(); // only if DB tables exist
+        return $this->configurationInstaller->uninstall();
+    }
+
+    private function registerHooks(\Module $module): bool
+    {
+        return (bool) $module->registerHook($this->hooks);
+    }
+
+    // Only add installDatabase/uninstallDatabase + executeQueries if module has DB tables:
+    // private function installDatabase(): bool { return $this->executeQueries(SqlQueries::installQueries()); }
+    // private function uninstallDatabase(): bool { return $this->executeQueries(SqlQueries::uninstallQueries()); }
+    // private function executeQueries(array $queries): bool {
+    //     foreach ($queries as $query) {
+    //         if (!\Db::getInstance()->execute($query)) { return false; }
+    //     }
+    //     return true;
+    // }
+}
+```
+
+**`src/Install/ConfigurationInstaller.php`** — installs config per shop context:
+```php
+namespace Vendor\MyModule\Install;
+
+use Configuration;
+use Shop;
+
+class ConfigurationInstaller
+{
+    public function install(): bool
+    {
+        $shops = Shop::getContextListShopID();
+        $shopGroups = [];
+        $res = true;
+
+        foreach ($shops as $shopId) {
+            $groupId = (int) Shop::getGroupFromShop($shopId, true);
+            if (!in_array($groupId, $shopGroups)) {
+                $shopGroups[] = $groupId;
+            }
+            $res &= (bool) Configuration::updateValue('MYMODULE_SETTING', 'default', false, $groupId, $shopId);
+        }
+        foreach ($shopGroups as $groupId) {
+            $res &= (bool) Configuration::updateValue('MYMODULE_SETTING', 'default', false, $groupId);
+        }
+        $res &= (bool) Configuration::updateValue('MYMODULE_SETTING', 'default');
+
+        return (bool) $res;
+    }
+
+    public function uninstall(): bool
+    {
+        return (bool) Configuration::deleteByName('MYMODULE_SETTING');
+    }
+}
+```
+
+**`src/Install/FixturesInstaller.php`** — only create when module needs default data:
+```php
+namespace Vendor\MyModule\Install;
+
+class FixturesInstaller
+{
+    public function install(): void
+    {
+        // Insert default entities, sample content, etc.
     }
 }
 ```
