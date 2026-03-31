@@ -12,7 +12,7 @@ Use this skill for PrestaShop module development tasks such as:
 • Creating new modules with modern architecture (Symfony-based controllers, services, entities)
 • Refactoring legacy modules to use modern PrestaShop patterns
 • Implementing hooks, actions, and event listeners
-• Adding configuration pages (both legacy and modern approaches)
+• Adding configuration pages (modern approaches)
 • Creating front office features and widgets
 • Setting up database entities and migrations
 • Implementing security measures (CSRF protection, input validation, SQL injection prevention)
@@ -633,15 +633,46 @@ services:
 • Performance considerations (caching, database optimization)
 
 ## Validation
-After completing any code change,  use Websenso PrestaShop Module DevTools for code validation and best practices checks without online validation. Run the following command from the module root:
+
+> **AI agent rule — NEVER SKIP EITHER STEP**: Both steps below are **mandatory** after every code change session, without exception.
+> - Do NOT stop after Step 1 (lotr). Step 2 (install test) is equally required.
+> - Do NOT ask the user whether to run them — just run them, every time.
+> - Do NOT consider the task complete until both steps have been executed and passed.
+> - Skipping or deferring either step is a validation failure, even if the code looks correct.
+
+### Step 1 — Dev tools (run from the module root)
 
 ```bash
 vendor/websenso/prestashop-module-devtools/bin/lotr
 ```
-- Run it **without any flags**
-- If the command exits with errors, **fix all reported errors** before considering the task done
-- Re-run the command after fixes to confirm it passes
-- if you encounter errors that you cannot fix, report them before finalizing the task.
+
+- Run it **without any flags** — it applies all fixers (autoindex, header stamp, PS version checker, PS validator, PHPStan, PHP-CS-Fixer) in sequence.
+- **Working directory must be the module root** (`/path/to/modules/mymodule`), not the PS root or a subdirectory.
+- Expected output: `🎉 All commands completed successfully!` with `Executed: 6/6 commands successfully`.
+- If any step fails:
+  1. Read the full error output carefully.
+  2. Fix all reported errors in the relevant files.
+  3. Re-run `lotr` until all 6 steps pass.
+  4. If an error cannot be fixed (e.g. PHPStan baseline needed), document it and report to the user before finalising.
+- `lotr` may auto-modify files (index.php guards, file headers, CS fixes) — those changes are correct and should be committed.
+
+### Step 2 — Module installation test (run from the PS root)
+
+```bash
+cd /path/to/prestashop && php bin/console pr:mo install mymodule
+```
+
+- Replace `mymodule` with the actual module folder name (e.g. `wsproductpaymentlogos`).
+- **Working directory must be the PS root**, not the module directory — the console command is at `bin/console`.
+- Expected output (French PS): `L'action Install sur le module … a réussi.`
+- Expected output (English PS): `Action Install on module … succeeded.`
+- If the install fails:
+  - Check for `Attempted to load class` → missing `require_once __DIR__ . '/vendor/autoload.php';` in the main module file.
+  - Check for `Call to undefined method` → wrong namespace or missing `use` statement.
+  - Check for DB errors → review `ConfigurationInstaller` and any SQL queries in `Installer`.
+  - Re-run after fixes.
+- If the module was already installed, : `php bin/console pr:mo uninstall mymodule`, then re-install.
+- After a successful install, clear the cache if config routes are not resolving: `php bin/console cache:clear`.
 
 ## Failure modes / debugging
 
