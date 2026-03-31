@@ -36,7 +36,14 @@ Use this skill for PrestaShop module development tasks such as:
 
 1. **For new modules**: Use PrestaShop Module Generator at https://validator.prestashop.com/generator for quick bootstrap
 2. **For existing modules**: Analyze current structure and identify legacy patterns
-3. **Standard modern structure**:
+3. **Namespace naming convention** — derive the PSR-4 namespace from the module name:
+   - The module name prefix (first 2 letters before the real words) becomes the **top-level vendor namespace**
+   - The remaining real words become **sub-namespaces** in CamelCase (detect word boundaries)
+   - **Never** use the generic `PrestaShop\Module\` vendor prefix — it is reserved for PrestaShop core modules
+   - Example: `wsproductpaymentlogos` → prefix `Ws`, words `Product`, `Payment`, `Logos` → `Ws\ProductPaymentLogos`
+   - Example: `mycompanycoolfeature` → prefix `My` (2 letters), words `Company`, `Cool`, `Feature` → `My\CompanyCoolFeature`
+   - This applies to `composer.json` `autoload.psr-4`, PHP `namespace` declarations, and `config/services.yml` FQCNs
+4. **Standard modern structure**:
 ```
 mymodule/
 ├── config/
@@ -111,45 +118,196 @@ class MyModule extends Module
 
 ### 2) Modern configuration pages
 
-**Prefer Symfony-based admin controllers** over legacy `getContent()`:
+> **⚠️ DO NOT use `HelperForm`** — it is based on Smarty + Bootstrap 3 and is explicitly discouraged in Symfony controllers. See https://devdocs.prestashop-project.org/9/development/components/helpers/helperform/
+> **⚠️ DO NOT use `getContent()` to render HTML** — only use it to redirect to the Symfony route.
 
+The canonical pattern uses four classes and two config files:
+
+```
+config/routes.yml                           # declares the Symfony route
+config/services.yml                         # wires all services + controller
+src/Form/ConfigurationDataConfiguration.php # reads/writes PS configuration table
+src/Form/ConfigurationFormDataProvider.php  # bridges form ↔ DataConfiguration
+src/Form/ConfigurationFormType.php          # Symfony form type (no HelperForm!)
+src/Controller/Admin/ConfigurationController.php  # handles GET/POST, renders Twig
+views/templates/admin/configuration.html.twig     # Twig template with PS UI Kit
+```
+
+**`config/routes.yml`** — link route to controller and legacy tab:
+```yaml
+mymodule_configuration:
+  path: /mymodule/configuration
+  methods: [GET, POST]
+  defaults:
+    _controller: 'Vendor\MyModule\Controller\Admin\ConfigurationController::index'
+    _legacy_controller: AdminMymoduleConfiguration
+    _legacy_link: AdminMymoduleConfiguration
+```
+
+> **Namespace rule**: derive from module name — `mymodule` = `My\Module`, `xscoolfeature` = `Xs\CoolFeature`.
+> Never use the generic `PrestaShop\Module\` vendor prefix.
+
+**`composer.json` autoload**:
+```json
+"autoload": {
+  "psr-4": { "Vendor\\MyModule\\": "src/" }
+}
+```
+
+**`config/services.yml`** — wire all four classes:
+```yaml
+services:
+  _defaults:
+    public: true
+
+  prestashop.module.mymodule.form.configuration_data_configuration:
+    class: Vendor\MyModule\Form\ConfigurationDataConfiguration
+    arguments:
+      - '@prestashop.adapter.legacy.configuration'
+
+  prestashop.module.mymodule.form.configuration_data_provider:
+    class: Vendor\MyModule\Form\ConfigurationFormDataProvider
+    arguments:
+      - '@prestashop.module.mymodule.form.configuration_data_configuration'
+
+  prestashop.module.mymodule.form.type.configuration:
+    class: Vendor\MyModule\Form\ConfigurationFormType
+    parent: 'form.type.translatable.aware'
+    tags:
+      - { name: form.type }
+
+  prestashop.module.mymodule.form.configuration_data_handler:
+    class: PrestaShop\PrestaShop\Core\Form\Handler
+    arguments:
+      - '@form.factory'
+      - '@prestashop.core.hook.dispatcher'
+      - '@prestashop.module.mymodule.form.configuration_data_provider'
+      - 'Vendor\MyModule\Form\ConfigurationFormType'
+      - 'MymoduleConfiguration'
+
+  Vendor\MyModule\Controller\Admin\ConfigurationController:
+    public: true
+    arguments:
+      - '@prestashop.module.mymodule.form.configuration_data_handler'
+      - '@prestashop.adapter.legacy.configuration'
+    tags:
+      - { name: controller.service_arguments }
+```
+
+**`src/Form/ConfigurationDataConfiguration.php`** — reads/writes PS config table:
 ```php
-// src/Controller/Admin/ConfigurationController.php
-use PrestaShopBundle\Controller\Admin\FrameworkBundleAdminController;
-use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\Response;
-
-class ConfigurationController extends FrameworkBundleAdminController
+final class ConfigurationDataConfiguration implements DataConfigurationInterface
 {
-    public function indexAction(Request $request): Response
+    public const CONFIG_TITLE = 'MYMODULE_TITLE';
+
+    public function __construct(private ConfigurationInterface $configuration) {}
+
+    public function getConfiguration(): array
     {
-        $form = $this->createForm(ConfigurationFormType::class);
-        $form->handleRequest($request);
-        
-        if ($form->isSubmitted() && $form->isValid()) {
-            // Handle form submission
-        }
-        
-        return $this->render('@Modules/mymodule/views/templates/admin/configuration.html.twig', [
-            'form' => $form->createView(),
+        return ['title' => $this->configuration->get(self::CONFIG_TITLE) ?? ''];
+    }
+
+    public function updateConfiguration(array $configuration): array
+    {
+        $this->configuration->set(self::CONFIG_TITLE, $configuration['title'] ?? '');
+        return [];
+    }
+
+    public function validateConfiguration(array $configuration): bool { return true; }
+}
+```
+
+**`src/Form/ConfigurationFormType.php`** — Symfony form using PS UI Kit types:
+```php
+class ConfigurationFormType extends TranslatorAwareType
+{
+    public function buildForm(FormBuilderInterface $builder, array $options): void
+    {
+        $builder->add('title', TextType::class, [
+            'label' => $this->trans('Title', 'Modules.Mymodule.Admin'),
+            'required' => false,
+        ]);
+    }
+
+    public function configureOptions(OptionsResolver $resolver): void
+    {
+        parent::configureOptions($resolver);
+        $resolver->setDefaults([
+            'form_theme' => '@PrestaShop/Admin/TwigTemplateForm/prestashop_ui_kit.html.twig',
         ]);
     }
 }
 ```
 
-**Legacy approach** (when Symfony controllers aren't suitable):
+**`src/Controller/Admin/ConfigurationController.php`** — handles the request:
 ```php
-public function getContent()
+class ConfigurationController extends FrameworkBundleAdminController
 {
-    if (Tools::isSubmit('submit' . $this->name)) {
-        $this->postValidation();
-        if (!count($this->context->controller->errors)) {
-            $this->postProcess();
+    public function __construct(
+        private FormHandlerInterface $formHandler,
+        private ConfigurationInterface $configuration
+    ) {}
+
+    public function index(Request $request): Response
+    {
+        $form = $this->formHandler->getForm();
+        $form->handleRequest($request);
+
+        if ($form->isSubmitted() && $form->isValid()) {
+            $errors = $this->formHandler->save($form->getData());
+            if (empty($errors)) {
+                $this->addFlash('success', $this->trans('Successful update.', 'Admin.Notifications.Success'));
+                return $this->redirectToRoute('mymodule_configuration');
+            }
+            foreach ($errors as $error) { $this->addFlash('danger', $error); }
         }
+
+        return $this->render(
+            '@Modules/mymodule/views/templates/admin/configuration.html.twig',
+            ['configurationForm' => $form->createView()]
+        );
     }
-    return $this->renderForm();
 }
 ```
+
+**`views/templates/admin/configuration.html.twig`** — Twig template:
+```twig
+{% form_theme configurationForm '@PrestaShop/Admin/TwigTemplateForm/prestashop_ui_kit.html.twig' %}
+{% extends '@PrestaShop/Admin/layout.html.twig' %}
+{% block content %}
+  {{ form_start(configurationForm) }}
+  <div class="card">
+    <h3 class="card-header"><i class="material-icons">settings</i> {{ 'Settings'|trans({}, 'Admin.Global') }}</h3>
+    <div class="card-body"><div class="form-wrapper">{{ form_widget(configurationForm) }}</div></div>
+    <div class="card-footer"><div class="d-flex justify-content-end">
+      <button type="submit" class="btn btn-primary">{{ 'Save'|trans({}, 'Admin.Actions') }}</button>
+    </div></div>
+  </div>
+  {{ form_end(configurationForm) }}
+{% endblock %}
+```
+
+**`mymodule.php`** — register tab, redirect `getContent()` to Symfony route:
+```php
+public function getTabs(): array
+{
+    return [[
+        'class_name' => 'AdminMymoduleConfiguration',
+        'visible' => false,
+        'name' => 'My Module Configuration',
+        'parent_class_name' => 'CONFIGURE',
+        'route_name' => 'mymodule_configuration',
+    ]];
+}
+
+public function getContent(): void
+{
+    $router = SymfonyContainer::getInstance()->get('router');
+    Tools::redirectAdmin($router->generate('mymodule_configuration'));
+}
+```
+
+Reference implementation: https://github.com/PrestaShop/example-modules/tree/master/demosymfonyform
 
 ### 3) Database operations and entities
 
@@ -382,4 +540,6 @@ For canonical documentation and advanced patterns:
 **Module-specific resources**:
 • [Payment Module Skeleton](https://github.com/PrestaShop/paymentexample)
 • [Official Example Modules](https://github.com/PrestaShop/example-modules) - Complete collection of official PrestaShop examples
+• [demosymfonyform](https://github.com/PrestaShop/example-modules/tree/master/demosymfonyform) - **canonical Symfony form configuration page example**
+• [HelperForm (discouraged)](https://devdocs.prestashop-project.org/9/development/components/helpers/helperform/) - legacy only, do not use in new code
 • [Sample Modules](https://devdocs.prestashop-project.org/8/modules/sample-modules/)
