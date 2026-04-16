@@ -1,6 +1,14 @@
 ---
 name: prestashop-module-development
 description: "Complete PrestaShop module development workflow using modern architecture and best practices. Use when: creating new PrestaShop modules, updating legacy modules to modern code, implementing hooks and actions, setting up module configuration pages, adding front office features, handling database operations, implementing security measures, managing translations, or modernizing existing PrestaShop modules from legacy patterns to current standards."
+license: MIT
+homepage: https://websenso.com
+repository: https://github.com/jeffsenso/prestashop-skills
+metadata:
+  author: jeffsenso
+  version: "1.1.1"
+  categories: ""
+---
 ---
 
 # PrestaShop Module Development
