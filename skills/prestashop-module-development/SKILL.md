@@ -157,9 +157,17 @@ Full pattern for building CRUD list pages with the PS Grid system:
 
 ### Step 1 — lotr (run from the module root)
 
+Before running lotr, check that the binary is present. If not, install it first:
+
 ```bash
-vendor/websenso/prestashop-module-devtools/bin/lotr
+# Check presence
+[ -f vendor/bin/lotr ] || composer require websenso/prestashop-module-devtools
+
+# Run lotr
+vendor/bin/lotr
 ```
+
+> **Note:** `vendor/bin/lotr` is the Composer-installed symlink. The direct path `vendor/websenso/prestashop-module-devtools/bin/lotr` also works if present.
 
 Expected: `🎉 All commands completed successfully! Executed: 6/6`
 
