@@ -3,6 +3,8 @@
 > **⚠️ DO NOT use `HelperForm`** — it is based on Smarty + Bootstrap 3 and is explicitly discouraged in Symfony controllers. See https://devdocs.prestashop-project.org/9/development/components/helpers/helperform/
 > **⚠️ DO NOT use `getContent()` to render HTML** — only use it to redirect to the Symfony route.
 
+> **⚠️ CRITICAL:** PrestaShop's `trans()` uses **different parameter order** than Symfony. See **[translations.md](translations.md#-critical-prestashop-custom-trans-signatures)** for correct signatures in `TranslatorAwareType` (forms) and `FrameworkBundleAdminController` (controllers).
+
 The canonical pattern uses four classes and two config files:
 
 ```
@@ -93,6 +95,8 @@ final class ConfigurationDataConfiguration implements DataConfigurationInterface
 ```
 
 ## `src/Form/ConfigurationFormType.php`
+
+> **Note:** `trans($key, $domain)` — domain is 2nd parameter, NOT 3rd. See [translations.md](translations.md#-critical-prestashop-custom-trans-signatures).
 
 ```php
 class ConfigurationFormType extends TranslatorAwareType

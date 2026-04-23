@@ -1,14 +1,6 @@
 ---
 name: prestashop-module-development
 description: "Complete PrestaShop module development workflow using modern architecture and best practices. Use when: creating new PrestaShop modules, updating legacy modules to modern code, implementing hooks and actions, setting up module configuration pages, adding front office features, handling database operations, implementing security measures, managing translations, or modernizing existing PrestaShop modules from legacy patterns to current standards."
-license: MIT
-homepage: https://websenso.com
-repository: https://github.com/jeffsenso/prestashop-skills
-metadata:
-  author: jeffsenso
-  version: "1.1.1"
-  categories: ""
----
 ---
 
 # PrestaShop Module Development
@@ -157,17 +149,9 @@ Full pattern for building CRUD list pages with the PS Grid system:
 
 ### Step 1 — lotr (run from the module root)
 
-Before running lotr, check that the binary is present. If not, install it first:
-
 ```bash
-# Check presence
-[ -f vendor/bin/lotr ] || composer require websenso/prestashop-module-devtools
-
-# Run lotr
-vendor/bin/lotr
+vendor/websenso/prestashop-module-devtools/bin/lotr
 ```
-
-> **Note:** `vendor/bin/lotr` is the Composer-installed symlink. The direct path `vendor/websenso/prestashop-module-devtools/bin/lotr` also works if present.
 
 Expected: `🎉 All commands completed successfully! Executed: 6/6`
 

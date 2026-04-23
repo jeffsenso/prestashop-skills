@@ -264,7 +264,10 @@ class MymoduleItemsRepository extends EntityRepository
             ->getQuery()
             ->getSingleScalarResult();
 
-        return ($max !== null) ? ((int) $max + 1) : 1;
+        // IMPORTANT: PrestaShop positions are 0-based
+        // First item = position 0, second = 1, third = 2, etc.
+        // Grid displays them as 1, 2, 3... but DB stores 0, 1, 2...
+        return ($max !== null) ? ((int) $max + 1) : 0;
     }
 
     /** Used by Grid QueryBuilder — raw DBAL */
@@ -396,3 +399,7 @@ services:
 - Repository registered via factory: `["@doctrine.orm.default_entity_manager", getRepository]`
 - Manager injects `@prestashop.core.admin.lang.repository` for translatable entities
 - Both entity files (main + lang) have the `if (!defined('_PS_VERSION_')) { exit; }` guard
+- **Position field MUST start at 0** (not 1) — Grid displays as 1, 2, 3... but DB stores 0, 1, 2...
+  - `getNextPosition()` should return `0` when no records exist (not `1`)
+  - FixturesInstaller should set first item position to `0` (not `1`)
+  - SQL `DEFAULT 0` is correct for position column
