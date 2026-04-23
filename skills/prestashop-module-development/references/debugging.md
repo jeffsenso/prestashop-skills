@@ -18,6 +18,16 @@
 | Redirect loop | `getContent()` returning HTML instead of redirecting | Use `Tools::redirectAdmin($router->generate(...))` |
 | "Unknown filter string" Twig error | `\|string` does not exist in Twig | Use `~ ''` string concatenation trick instead |
 
+## Form field issues
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| `Expected a numeric` on `IntegerType` | Empty string from database or empty field | See [forms.md](forms.md#%EF%B8%8F-integertype-with-optionalempty-values) — use `0` instead of `''` |
+| `Argument #2 must be of type array, string given` in FormType | Wrong `trans()` signature | Use `trans($key, $domain)` NOT `trans($key, [], $domain)` — see [translations.md](translations.md#%EF%B8%8F-critical-prestashop-custom-trans-signatures) |
+| `Argument #3 must be of type array, string given` in Controller | Wrong `trans()` signature | Use `trans($key, $domain, [])` with empty array as 3rd param — see [translations.md](translations.md#%EF%B8%8F-critical-prestashop-custom-trans-signatures) |
+| Boolean toggle renders as plain radio | Using `RadioType` instead of `SwitchType` | Use `SwitchType` — see [forms.md](forms.md#boolean--toggle-fields--always-use-switchtype-never-radiotype) |
+| Constraint validation message not translated | Using `trans()` in constraint message | Use plain string in constraint; Symfony handles translation separately |
+
 ## Grid system issues
 
 | Symptom | Likely cause | Fix |

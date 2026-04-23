@@ -72,6 +72,8 @@ services:
 
 ## `src/Form/ConfigurationDataConfiguration.php`
 
+> **⚠️ IntegerType fields:** If your form has integer fields, return `0` (int) not `''` (string) from `getConfiguration()` to avoid "Expected a numeric" errors. See [forms.md](forms.md#%EF%B8%8F-integertype-with-optionalempty-values).
+
 ```php
 final class ConfigurationDataConfiguration implements DataConfigurationInterface
 {
