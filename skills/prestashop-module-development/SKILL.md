@@ -119,9 +119,16 @@ Common conversions: HelperForm → Symfony form, jQuery UI sortable → Grid Pos
 
 Read: `references/services-and-di.md`
 
+**CRITICAL**: Never use legacy static calls in services/controllers:
+- ❌ `Context::getContext()` — inject `$context: "@=service('prestashop.adapter.legacy.context').getContext()"` instead
+- ❌ `Configuration::get()` / `updateValue()` — inject `@prestashop.adapter.legacy.configuration` instead
+- ❌ `Context::getContext()->getTranslator()` — inject `@translator` instead
+
+Key rules:
 - Define services in `config/services.yml`
 - Use `$this->get('service.id')` in Symfony controllers
-- Use Expression Language (`@=`) for computed constructor arguments
+- Use Expression Language (`@=`) for computed constructor arguments (context, language ID, shop ID)
+- Always inject dependencies via constructor, never use static accessors
 
 ### 9) Grid system (list pages with drag-and-drop position)
 

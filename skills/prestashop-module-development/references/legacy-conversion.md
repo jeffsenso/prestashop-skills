@@ -1,5 +1,46 @@
 # Legacy code conversion patterns
 
+## Static calls (Context, Configuration, Language)
+
+**Legacy** (do not use in services/controllers):
+```php
+$context = Context::getContext();
+$langId = $context->language->id;
+$shopId = $context->shop->id;
+$translator = $context->getTranslator();
+Configuration::updateValue('MY_KEY', 'value');
+$value = Configuration::get('MY_KEY');
+```
+
+**Modern** — use service injection:
+```yaml
+# config/services.yml
+mymodule.service.my_service:
+  class: 'Vendor\MyModule\Service\MyService'
+  arguments:
+    $context: "@=service('prestashop.adapter.legacy.context').getContext()"
+    $translator: '@translator'
+    $configuration: '@prestashop.adapter.legacy.configuration'
+```
+
+```php
+public function __construct(
+    private readonly Context $context,
+    private readonly TranslatorInterface $translator,
+    private readonly Configuration $configuration
+) {}
+
+public function doSomething(): void
+{
+    $langId = $this->context->language->id;
+    $shopId = $this->context->shop->id;
+    $message = $this->translator->trans('key', [], 'Modules.Mymodule.Admin');
+    $this->configuration->set('MY_KEY', 'value');
+}
+```
+
+Read `references/services-and-di.md` for complete list of injection patterns.
+
 ## Configuration page
 
 **Legacy** (do not use):
