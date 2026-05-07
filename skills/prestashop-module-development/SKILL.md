@@ -180,7 +180,7 @@ Common failure areas:
 ## PrestaShop 9 Core Documentation
 
 The following files are downloaded from the official PrestaShop repository by
-`lotr --install` and placed in `skills/prestashop-module-development/ps9-core-ai/`.
+`lotr --install` and placed in `ps9-core-ai/` next to this SKILL.md.
 Read them for deep understanding of PS9 core architecture, conventions, and patterns.
 
 - **`ps9-core-ai/CONTEXT.md`** — Root AI context for the PS9 codebase: project-wide coding
