@@ -197,7 +197,17 @@ Read them for deep understanding of PS9 core architecture, conventions, and patt
 
 ## Steering
 
-If your project or organisation defines a steering layer (layered context rules for coding standards, architecture conventions, and project-specific overrides), load the steering files before starting any task. Typical structure:
+If your project or organisation defines a steering layer (layered context rules for coding standards, architecture conventions, and project-specific overrides), load the steering files before starting any task.
+
+**Finding the resolver — search in this order:**
+
+1. `steering/resolver.md` at the module root (custom installation)
+2. `vendor/websenso/prestashop-module-devtools/steering/resolver.md` — canonical path when the devtools are installed as a Composer package (same package that provides `vendor/websenso/prestashop-module-devtools/bin/lotr`)
+3. Any `vendor/*/*/steering/resolver.md` — scan all vendor subfolders for a `steering/resolver.md` file (use the first match found)
+
+If none exists, skip steering silently and apply only the skill defaults.
+
+Typical steering structure (paths relative to wherever the resolver is found):
 
 ```
 steering/resolver.md                          ← load order and conflict rules
