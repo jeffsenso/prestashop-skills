@@ -10,14 +10,17 @@ Complete workflow for creating modern PrestaShop modules and updating legacy cod
 **Features:**
 - Modern Symfony-based architecture
 - Security best practices
-- Legacy code conversion patterns  
+- Legacy code conversion patterns
 - Database operations with Doctrine
 - Translation and multilingual support
 - Performance optimization
 - Testing and validation
+- Steering system: load-order rules for layering project-specific context files on top of the base skill
 
 **Usage:**
 This skill can be used by AI assistants like Claude, ChatGPT, and others to help developers create high-quality PrestaShop modules following current best practices.
+
+The skill is company-neutral — all examples use generic placeholders. Company or project-specific conventions belong in a separate steering layer loaded alongside the skill (see `## Steering` in `SKILL.md`).
 
 **Documentation:**
 Based on official PrestaShop documentation:
