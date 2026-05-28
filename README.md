@@ -12,7 +12,9 @@ Complete workflow for creating modern PrestaShop modules and updating legacy cod
 - Security best practices
 - Legacy code conversion patterns
 - Database operations with Doctrine
-- Translation and multilingual support
+- Translation and multilingual support, including `TranslatableType` per-language fields
+- Theme template injection for PS8 (marker-based file patching)
+- Pre-built JS bundle templates for grid and translatable forms
 - Performance optimization
 - Testing and validation
 - Steering system: load-order rules for layering project-specific context files on top of the base skill
