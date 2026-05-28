@@ -259,35 +259,88 @@ class ConfigurationInstaller
 ```php
 namespace Vendor\MyModule\Install;
 
+use Db;
+
 class FixturesInstaller
 {
     public function install(): void
     {
-        // Insert default entities, sample content, etc.
+        // Insert default data using Db::getInstance() — see FixturesInstaller section below
     }
 }
 ```
 
-## FixturesInstaller — service resolution at install time
+## FixturesInstaller — MANDATORY: use `Db::getInstance()`, never Doctrine or SymfonyContainer
 
-**CRITICAL**: Do NOT call `$module->get('mymodule.manager.entity_manager')` inside `FixturesInstaller::install()`. The module's own services are NOT in the compiled container at install time — the container was compiled before the module was registered as active.
+**`SymfonyContainer::getInstance()` returns `null` during `pr:mo` (Symfony console install).**
 
-Instead, resolve the two core Symfony services (always available) and instantiate the Manager directly:
+Root cause: `SymfonyContainer::getInstance()` reads `global $kernel`. In the Symfony console context used by `php bin/console pr:mo install mymodule`, `$kernel` is never set as a global, so the method always returns `null`. Any Doctrine ORM calls silently do nothing.
+
+**`Db::getInstance()` is always available** — in web requests, console commands, and install hooks.
 
 ```php
-public function install(\Module $module): void
-{
-    $em = $module->get('doctrine.orm.default_entity_manager');        // always available
-    $langRepo = $module->get('prestashop.core.admin.lang.repository'); // always available
-    $itemRepo = $em->getRepository(MyEntity::class);
-    $manager = new MyManager($itemRepo, $langRepo, $em);               // manual instantiation
+namespace Vendor\MyModule\Install;
 
-    // Use \Language::getLanguages(false) for per-language arrays — core PS call, not our SQL
-    foreach (\Language::getLanguages(false) as $lang) {
-        // ...
+use Db;
+
+class FixturesInstaller
+{
+    public function install(): void
+    {
+        $db = Db::getInstance();
+        $prefix = _DB_PREFIX_;
+
+        // Skip if already installed (idempotent)
+        $existing = (int) $db->getValue("SELECT COUNT(*) FROM `{$prefix}mymodule_items`");
+        if ($existing > 0) {
+            return;
+        }
+
+        $langId = $this->resolveLangId($db, $prefix);
+        if ($langId === 0) {
+            return;
+        }
+
+        $now = date('Y-m-d H:i:s');
+        $db->execute(
+            "INSERT INTO `{$prefix}mymodule_items` (`active`, `position`, `date_add`, `date_upd`)
+             VALUES (1, 0, '" . pSQL($now) . "', '" . pSQL($now) . "')"
+        );
+
+        $itemId = (int) $db->Insert_ID();
+        if ($itemId === 0) {
+            return;
+        }
+
+        $db->execute(
+            "INSERT INTO `{$prefix}mymodule_items_lang` (`id_item`, `id_lang`, `name`)
+             VALUES ({$itemId}, {$langId}, '" . pSQL('Default item') . "')"
+        );
+    }
+
+    private function resolveLangId(Db $db, string $prefix): int
+    {
+        // NOTE: Db::getValue() automatically appends LIMIT 1 — never add it yourself
+        $frId = (int) $db->getValue("SELECT `id_lang` FROM `{$prefix}lang` WHERE `iso_code` = 'fr'");
+        if ($frId > 0) {
+            return $frId;
+        }
+        return (int) $db->getValue("SELECT `id_lang` FROM `{$prefix}lang` ORDER BY `id_lang` ASC");
     }
 }
 ```
+
+> ⚠️ **`Db::getValue()` appends `LIMIT 1` internally** — never write `LIMIT 1` in the SQL string passed to `getValue()`. It results in a MariaDB syntax error.
+
+## FixturesInstaller — legacy note (DO NOT USE)
+
+~~Do NOT call `$module->get('mymodule.manager.entity_manager')` inside `FixturesInstaller::install()`. The module's own services are NOT in the compiled container at install time.~~
+
+This was the previous guidance. The updated rule is simpler: **always use `Db::getInstance()` in FixturesInstaller**. It works in all contexts without any workarounds.
+
+## ThemeTemplateInstaller — injecting widget calls into theme templates
+
+If your module needs a `{widget}` call added to a theme template, use `ThemeTemplateInstaller` + `ThemeTemplateInjector`. See the dedicated reference: **`theme-template-injection.md`**.
 
 ## Guard patterns — service access from the module class
 

@@ -76,7 +76,8 @@ For translatable entities with Grid: read `references/entity-doctrine.md`
 - Do NOT create `MetadataListener` or Doctrine event listeners for table naming
 - Always sanitize raw DBAL SQL: cast IDs with `(int)`, use bound parameters
 - **No raw SQL (`Db::getInstance()`, `pSQL()`, `_DB_PREFIX_` string concatenation) outside Repository and Manager classes.** This applies everywhere: main module class, Installer, FixturesInstaller, hooks, widget methods. The only exception is `Installer` SQL schema queries (`CREATE TABLE`, `DROP TABLE`) which have no Repository equivalent.
-- **FixturesInstaller must NOT call module-own services** — the module's services are not in the container at install time. Instantiate Manager directly using core Doctrine services. See `references/module-class-and-installer.md` → *FixturesInstaller — service resolution* section.
+- **FixturesInstaller must use `Db::getInstance()` raw SQL** — `SymfonyContainer::getInstance()` returns `null` in the `pr:mo` Symfony console context (`global $kernel` is never set). All Doctrine ORM calls silently do nothing at install time. See `references/module-class-and-installer.md` → *FixturesInstaller* section.
+- **`Db::getValue()` appends `LIMIT 1` internally** — never write `LIMIT 1` in the SQL string passed to it; causes a MariaDB syntax error.
 
 ### Services split & components architecture
 
@@ -107,6 +108,15 @@ Read: `references/hooks-and-front-office.md`
 - Register hooks in `Installer`, not in `install()` directly
 - Load assets only for the relevant controller in `hookDisplayBackOfficeHeader`
 - Implement `WidgetInterface` for front office widgets
+
+### 5b) Theme template injection (widget call on install)
+
+Read: `references/theme-template-injection.md`
+
+- PS8 does not support theme overrides from modules — use marker-based file patching instead
+- Two-class design: `ThemeTemplateInjector` (service, reusable) + `ThemeTemplateInstaller` (install orchestrator)
+- **Never use `Theme::getThemes()`** in install context — legacy class, not autoloaded in Symfony console; use `scandir(_PS_ALL_THEMES_DIR_)` instead
+- Wrap install/uninstall calls in try/catch returning `true` — theme injection must never block module install
 
 ### 6) Translations
 

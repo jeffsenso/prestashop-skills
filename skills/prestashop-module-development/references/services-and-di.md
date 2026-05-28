@@ -1,5 +1,19 @@
 # Services & dependency injection
 
+## **CRITICAL: `SymfonyContainer::getInstance()` is null in console context**
+
+`PrestaShop\PrestaShop\Adapter\SymfonyContainer::getInstance()` relies on reading `global $kernel`.
+
+**In the Symfony console context (`php bin/console pr:mo install mymodule`), `$kernel` is never set as a global variable.** The method always returns `null`. Any code that depends on it silently does nothing.
+
+**NEVER use `SymfonyContainer::getInstance()` in install-time code** (FixturesInstaller, ThemeTemplateInstaller, Installer, etc.).
+
+For data access at install time, use `Db::getInstance()` raw SQL. See `module-class-and-installer.md`.
+
+For services at runtime (web request), use `$this->get('service.id')` from the module class or inject via constructor.
+
+---
+
 ## **CRITICAL: Avoid legacy static calls**
 
 ❌ **DO NOT USE** legacy static accessor patterns in modern services/controllers:
