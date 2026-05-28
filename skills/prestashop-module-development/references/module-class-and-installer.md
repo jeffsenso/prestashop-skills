@@ -291,6 +291,8 @@ public function install(\Module $module): void
 
 ## Guard patterns — service access from the module class
 
+> ⚠️ **NEVER use `ContainerFinder`** — it is not needed and adds unnecessary complexity. `$this->get()` works in both admin and front-office contexts when services are registered in the correct config file.
+
 ### Admin context: `$this->has()` before `$this->get()`
 
 ```php
@@ -300,20 +302,19 @@ if ($service === null) {
 }
 ```
 
-### Front office context: try/catch + instanceof (mandatory)
+### Front office context: plain `$this->get()` + null check
 
-`$this->has()` can return `true` yet `$this->get()` still throw on a stale container. Always use this pattern in front-office hooks and widget methods:
+Repository services are available via `$this->get()` in front-office hooks and widget methods, as long as they are registered in `config/front/services.yml` (directly or via import of `common.yml`).
 
 ```php
-try {
-    $repository = $this->get('mymodule.repository.my_repository');
-} catch (Exception $e) {
-    $repository = null;
-}
-if (!$repository instanceof \Ws\MyModule\Repository\MyRepository) {
+/** @var \Ws\MyModule\Repository\MyRepository|null $repository */
+$repository = $this->get('mymodule.repository.my_repository');
+if (!$repository) {
     return [];
 }
 // safe to use $repository here
 ```
 
-**Rule**: Repository services defined in `config/common.yml` are available in BOTH admin and front kernels. Manager and other admin-only services (in `config/admin/services.yml`) must NEVER be called from front-office hooks or widget methods.
+If `$this->get()` returns `null` in front-office, the service is not in `config/front/services.yml` — fix the config, not the call site.
+
+**Rule**: Repository services defined in `config/common.yml` (imported by `config/front/services.yml`) are available in both admin and front kernels. Manager and other admin-only services (in `config/admin/services.yml`) must NEVER be called from front-office hooks or widget methods.

@@ -51,7 +51,7 @@ Key rules:
 - If using a shared company group tab, check its existence before creating it — never unconditionally create it
 - `getContent()` must only redirect to the Symfony route, never render HTML
 - **No SQL in the main module class** — all database access (including in hooks like `hookActionShopDataDuplication` and widget methods like `getWidgetVariables`) must be delegated to the Repository or Manager class via `$this->get('service.id')`
-- **Always guard service access** — use `$this->has()` + null check in admin context; use try/catch + `instanceof` in front-office context (stale container can make `has()` return `true` while `get()` still throws). See `references/module-class-and-installer.md` → *Guard patterns* section.
+- **Service access**: use `$this->has()` + null check in admin context; use plain `$this->get()` + null check in front-office context. **NEVER use `ContainerFinder`** — it is unnecessary. See `references/module-class-and-installer.md` → *Guard patterns* section.
 
 ### 2) Modern configuration pages
 
