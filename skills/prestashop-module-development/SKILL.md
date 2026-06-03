@@ -244,8 +244,7 @@ Common failure areas:
 
 ## PrestaShop 9 Core Documentation
 
-The following files are downloaded from the official PrestaShop repository by
-`lotr --install` and placed in `ps9-core-ai/` next to this SKILL.md.
+The following files are bundled with this skill in the `ps9-core-ai/` directory.
 Read them for deep understanding of PS9 core architecture, conventions, and patterns.
 
 - **`ps9-core-ai/CONTEXT.md`** — Root AI context for the PS9 codebase: project-wide coding
@@ -254,7 +253,7 @@ Read them for deep understanding of PS9 core architecture, conventions, and patt
 - **`ps9-core-ai/STRUCTURE.md`** — Architecture of the `.ai/` folder itself: how contexts,
   skills, and pointer files are organized and how AI tools discover them.
 
-> These files are static and bundled with this skill. They may be refreshed locally via `lotr --install`.
+> **Note for skill maintainers**: These files are static snapshots from the official PrestaShop repository. To update them, skill maintainers can run `lotr --install` from a module directory. This is not a runtime operation — the files are pre-bundled and version-controlled with the skill.
 
 ## Steering
 

@@ -2,6 +2,16 @@
 
 All notable changes to the PrestaShop Module Development skill.
 
+## [2026-06-03] - Documentation Updates, Security Clarification
+
+### Changed
+- **SKILL.md** - Clarified PS9 Core Documentation section to address Snyk security audit warning
+  - Emphasized that ps9-core-ai files are pre-bundled and static (not downloaded at runtime)
+  - Reworded `lotr --install` reference as maintenance-only task for skill maintainers
+  - Removed suggestion of runtime external dependency to resolve W012 MEDIUM security warning
+- **README.md** - Created comprehensive skill overview
+- **CHANGELOG.md** - Created complete change history
+
 ## [2026-06-03] - Cart Rules, Order LoggableInterface, Console Commands
 
 ### Added
