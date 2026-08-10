@@ -22,7 +22,7 @@ Complete workflow for creating modern PrestaShop modules and updating legacy cod
 **Usage:**
 This skill can be used by AI assistants like Claude, ChatGPT, and others to help developers create high-quality PrestaShop modules following current best practices.
 
-The skill is company-neutral — all examples use generic placeholders. Company or project-specific conventions belong in a separate steering layer loaded alongside the skill (see `## Steering` in `SKILL.md`).
+The skill is company-neutral and self-contained for core features — all examples use generic placeholders, and essential documentation (like CategoryChoiceTreeType setup) is embedded directly in the skill. Company or project-specific conventions belong in a separate steering layer loaded alongside the skill (see `## Steering` in `SKILL.md`).
 
 **Documentation:**
 Based on official PrestaShop documentation:
