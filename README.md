@@ -9,6 +9,7 @@ Complete workflow for creating modern PrestaShop modules and updating legacy cod
 
 **Features:**
 - Modern Symfony-based architecture
+- **Mandatory installer pattern** with explicit install/uninstall ordering, hooks and tabs as class property arrays, parent group tab auto-installation
 - Security best practices
 - Legacy code conversion patterns
 - Database operations with Doctrine

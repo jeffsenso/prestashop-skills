@@ -14,6 +14,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- `SKILL.md` — **MANDATORY installer pattern rules**: install() must call `parent::install()` FIRST with explicit check, then delegate to Installer; uninstall() must call Installer FIRST, then `parent::uninstall()` with `&&` chaining; hooks and tabs must be defined as class property arrays (`private array $hooks = [...]`, `private array $tabs = [...]`); parent group tab auto-installation logic added; NEVER use `getTabs()` method in module class — all tab management in Installer only.
+- `references/module-class-and-installer.md` — complete rewrite: new **MANDATORY install/uninstall pattern** section at the top; tabs management pattern now uses structured class property array with parent group tab auto-check; hooks defined as class property array; simplified Installer class without ConfigurationInstaller sub-class; removed `getTabs()` pattern; all tab logic consolidated in Installer class.
 - `SKILL.md` — configuration page pattern updated from 4 to 5 classes (added FormHandler); now mandates constructor dependency injection in controllers instead of `$this->get()` service locator access.
 - `SKILL.md` — added controller registration requirements: must be `public: true` with `controller.service_arguments` tag.
 - `SKILL.md` — added FormType registration requirements: must have `parent: 'form.type.translatable.aware'` and `tags: [{ name: form.type }]`.

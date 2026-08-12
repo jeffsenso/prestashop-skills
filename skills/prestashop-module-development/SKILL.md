@@ -46,11 +46,17 @@ Key rules:
 
 Read: `references/module-class-and-installer.md`
 
+**MANDATORY patterns:**
+- **install() method**: ALWAYS `if (!parent::install()) { return false; }` FIRST, THEN delegate to installer
+- **uninstall() method**: ALWAYS installer FIRST, THEN `parent::uninstall()` with `&&` chaining: `return $installer->uninstall() && parent::uninstall();`
+- **Hooks**: Define as class property array `private array $hooks = [...]` in Installer, use `$module->registerHook($this->hooks)` to register
+- **Tabs**: Define as class property array `private array $tabs = [...]` with structured data: `name`, `class_name`, `label`, `parent_class_name`, `visible`
+- **Parent group tab**: Auto-check if exists, if not, prepend to tabs array with `array_unshift($this->tabs, $parentTab)`
+- **No getTabs()**: NEVER add `getTabs()` method to module class — all tab management in Installer only
+
 Key rules:
 - Always `require_once __DIR__ . '/vendor/autoload.php';` after the `_PS_VERSION_` guard
 - Never put hook registration, DB queries, or `Configuration::` calls directly in `install()` — delegate to `src/Install/Installer.php`
-- **Do NOT add `getTabs()`** to the main module class — manage tabs entirely via `Installer::installTabs()` / `uninstallTabs()`
-- If using a shared company group tab, check its existence before creating it — never unconditionally create it
 - `getContent()` must only redirect to the Symfony route, never render HTML
 - **No SQL in the main module class** — all database access (including in hooks like `hookActionShopDataDuplication` and widget methods like `getWidgetVariables`) must be delegated to the Repository or Manager class via `$this->get('service.id')`
 - **Service access**: use `$this->has()` + null check in admin context; use plain `$this->get()` + null check in front-office context. **NEVER use `ContainerFinder`** — it is unnecessary. See `references/module-class-and-installer.md` → *Guard patterns* section.
