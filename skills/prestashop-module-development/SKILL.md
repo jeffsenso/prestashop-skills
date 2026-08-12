@@ -59,10 +59,32 @@ Key rules:
 
 Read: `references/configuration-page.md`
 
+**MANDATORY pattern**: FormHandler with constructor dependency injection
+
 Key rules:
 - **Do NOT use `HelperForm`** — use Symfony form components + `FrameworkBundleAdminController`
-- Four classes: `DataConfiguration`, `FormDataProvider`, `FormType`, `Controller`
-- Wire everything in `config/components/` sub-folders (imported by `config/admin/services.yml`) and `config/routes.yml`
+- **Do NOT access services via `$this->get()` in controllers** — Controllers have a limited service locator. Use constructor dependency injection with FormHandler instead
+- Five classes: `DataConfiguration`, `FormDataProvider`, `FormType`, `FormHandler` (PrestaShop Core), `Controller` (with DI)
+- Wire everything in `config/components/configuration/services.yml` (imported by `config/admin/services.yml`) and `config/routes.yml`
+- **FormHandler**: Use `PrestaShop\PrestaShop\Core\Form\Handler` service that wraps form creation, validation, and saving
+- **Controller registration**: Must be registered as **`public: true`** service with **`controller.service_arguments`** tag
+- **FormType registration**: Must have `parent: 'form.type.translatable.aware'` and `tags: [{ name: form.type }]`
+- **Twig template form wrapping**: ALWAYS use `{% form_theme configurationForm '@PrestaShop/Admin/TwigTemplateForm/prestashop_ui_kit.html.twig' %}` **before** `{% extends %}`; place `{{ form_start() }}` **BEFORE** `<div class="card">` and `{{ form_end() }}` **AFTER** `</div>` — form tags must wrap the entire card structure at the same nesting level to prevent broken HTML
+- **Controller pattern**:
+  ```php
+  private FormHandlerInterface $formHandler;
+  
+  public function __construct(FormHandlerInterface $formHandler)
+  {
+      $this->formHandler = $formHandler;
+  }
+  
+  public function indexAction(Request $request): Response
+  {
+      $form = $this->formHandler->getForm();
+      // ... handle request and save via $this->formHandler->save()
+  }
+  ```
 - **CategoryChoiceTreeType**: PrestaShop's form type for hierarchical category selection trees. Requires specific setup:
   - **Valid form options**: `'multiple' => true` for multi-selection; `'required' => false` for optional. **DO NOT use** `'expanded'` option — it does not exist for this type
   - **Template requirements**: Add `{% form_theme configurationForm '@PrestaShop/Admin/TwigTemplateForm/prestashop_ui_kit.html.twig' %}` **before** `{% extends %}` directive; include JS bundle in `{% block javascripts %}`
@@ -113,9 +135,10 @@ Read: `references/security.md`
 
 Read: `references/hooks-and-front-office.md`
 
+- **CRITICAL: For front-office CSS/JS registration, ALWAYS use `actionFrontControllerSetMedia` hook**, NEVER use `header` or `displayHeader` — use `$this->context->controller->registerStylesheet()` and `->registerJavascript()` in that hook
 - Register hooks in `Installer`, not in `install()` directly
-- Load assets only for the relevant controller in `hookDisplayBackOfficeHeader`
-- Implement `WidgetInterface` for front office widgets
+- **When implementing `WidgetInterface`, DO NOT define explicit hook methods** like `hookDisplayHome()` that just call `renderWidget()` — PrestaShop automatically calls `renderWidget()` for all registered display hooks
+- **For front-office Smarty templates: use `{l s='Text' d='Modules.Modulename.Front'}` directly in template**, NEVER pass pre-translated strings as Smarty variables from `getWidgetVariables()` — only pass dynamic data (URLs, IDs, etc.), not static translatable UI text
 
 ### 5b) Theme template injection (widget call on install)
 
